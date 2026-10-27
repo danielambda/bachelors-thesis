@@ -1,68 +1,197 @@
 \chapter{Literature Review}
 \label{chap:lr}
-\chaptermark{Second Chapter Heading}
+\chaptermark{Literature Review}
 
+This chapter reviews the work that motivates the design of a reusable interface for type elaboration. Sections~\ref{sec:lr-types} and~\ref{sec:lr-bidir} introduce the relevant foundations of type systems and bidirectional typing. Sections~\ref{sec:lr-syntax} and~\ref{sec:lr-freefoil} discuss scope-safe representations of abstract syntax and the Free Foil framework. Section~\ref{sec:lr-recipe} presents the Pfenning recipe as a guide for designing bidirectional rules, while Section~\ref{sec:lr-other} considers other approaches to generic type checking. Section~\ref{sec:lr-predecessors} examines the predecessor work most directly related to this thesis, and Section~\ref{sec:lr-languages} discusses related tools and languages.
 
-\Blindtext[2]
+The central concern of this thesis is not only how to perform checking and inference over scope-safe syntax, but also how to expose their result in a useful form. In particular, type elaboration produces a complete typed abstract syntax tree: the output represents the input program together with the typing information established during checking, rather than merely returning the type of the current expression. This perspective motivates the discussion of typed syntax and the relationship between the present work and its immediate predecessor.
 
-\section{Another Section}
-\Blindtext[1]
-\newpage
-With the widespread of computing systems, information processing, and net working, the practice of replacing paper documentation to electronic documentation has become more and more common. Electronic documentation within the workplace has several advantages over the traditional one, such as being easy to share, copy and edit the document. However, these advantages also present a problem. A malefactor, having access to the system, can easily copy and leak the document, without leaving any trace. Such actions are virtually undetectable in most systems, so, the malefactor goes unpunished. In this thesis, we propose one solution to the problem: digital watermarking. 
+\section{Type Systems in Programming Languages}
+\label{sec:lr-types}
 
-Every electronic document within the protected system is marked with an invisible digital watermark, containing information about the user, accessing this particular document. Therefore, in case the protected company discovers the leaked document, they will be able to identify the machine of the malicious person and time when the document was leaked. This will allow inflicting punishment on the malefactor, recovering the costs of the leak, and potentially preventing future ones. 
+A type is a collection of computational entities that share some common property, and a type system is a lightweight formal method for reasoning about the behaviour of programs before they run. A type system is usually presented as a set of typing judgments, such as $\Gamma \vdash e : \tau$, together with typing rules that explain how these judgments are derived. This rules-first presentation also serves as a specification for implementation, since a type checker can be read as an executable interpretation of the rules. This section recalls the type systems that are relevant to the thesis, in order of increasing complexity.
 
-\begin{longtable}{c|c}
-\caption[This is the title I want to appear in the List of Tables]{Simulation Parameters} \label{table:secsimulation_params} \\
-\hline
-A & B  \\
-\hline
-\endfirsthead
-\multicolumn{2}{@{}l}{} \\
-\hline
-A & B \\
-\hline
-\endhead
-\hline
- \textbf{Parameter} & \textbf{Value}\\
- \hline
- Number of vehicles & $|\mathcal{V}|$\\
- \hline
- Number of RSUs & $|\mathcal{U}|$\\
- \hline
- RSU coverage radius & 150 m\\
- \hline
- V2V communication radius & 30 m\\
- \hline
- Smart vehicle antenna height & 1.5 m\\
- \hline
- RSU antenna height & 25 m\\
- \hline
- Smart vehicle maximum speed & $v_{max}$ m/s\\
- \hline
- Smart vehicle minimum speed & $v_{min}$ m/s\\
- \hline
- Common smart vehicle cache capacities & $[50, 100, 150, 200, 250]$ mb\\
- \hline
- Common RSU cache capacities & $[5000,1000,1500,2000,2500]$ mb\\
- \hline
- Common backhaul rates & $[75, 100, 150]$ mb/s\\
- \hline
-\end{longtable}
+\subsection{Simply Typed Lambda Calculus}
 
-\begin{figure}[hbt]
+The simply typed $\lambda$-calculus (STLC) is the smallest system with function types. Its typing rules for variables, abstraction, and application are shown in Figure~\ref{fig:lr-stlc}.
+
+\begin{figure}[ht]
 \centering
-\includegraphics[]{figs/images.png}
-\caption{One kernel at $x_s$ (\emph{dotted kernel}) or two kernels at
-$x_i$ and $x_j$ (\textit{left and right}) lead to the same summed estimate
-at $x_s$. This shows a figure consisting of different types of
-lines. Elements of the figure described in the caption should be set in
-italics, in parentheses, as shown in this sample caption.}
-\label{fig:secex}
+\[
+\frac{x : \tau \in \Gamma}{\Gamma \vdash x : \tau}
+\qquad
+\frac{\Gamma, x : \tau_1 \vdash e : \tau_2}{\Gamma \vdash \lambda x{:}\tau_1.\, e : \tau_1 \to \tau_2}
+\qquad
+\frac{\Gamma \vdash e_1 : \tau_1 \to \tau_2 \quad \Gamma \vdash e_2 : \tau_1}{\Gamma \vdash e_1\, e_2 : \tau_2}
+\]
+\caption{Typing rules of the simply typed $\lambda$-calculus}
+\label{fig:lr-stlc}
 \end{figure}
 
-This description implies several essential properties of the task at hand:
+\subsection{System F}
+
+System~F extends the simply typed $\lambda$-calculus with universal polymorphism: terms may abstract over types, and types may quantify over type variables. Figure~\ref{fig:lr-sysf} shows the two rules that System~F adds. A single syntax of terms and types, in which both kinds of binders occur, is what makes System~F a useful test for any generic treatment of binding, because term variables and type variables are bound in the same language.
+
+\begin{figure}[ht]
+\centering
+\[
+\frac{\Gamma, \alpha \vdash e : \tau}{\Gamma \vdash \Lambda\alpha.\, e : \forall\alpha.\, \tau}
+\qquad
+\frac{\Gamma \vdash e : \forall\alpha.\, \tau}{\Gamma \vdash e\,[\sigma] : \tau[\alpha := \sigma]}
+\]
+\caption{Typing rules for type abstraction and type application in System~F}
+\label{fig:lr-sysf}
+\end{figure}
+
+\subsection{Dependent Type Theories}
+
+Martin-L\"of type theory (MLTT) goes further by letting types depend on terms. Function types become dependent products $\Pi x{:}A.\, B$, in which the result type may mention the argument, and types are themselves terms, classified by universes. Figure~\ref{fig:lr-mltt} shows the rules for dependent functions. The rule for application substitutes the argument into the result type, and the conversion rule makes two types interchangeable whenever they are equal up to computation. The consequence for type checking is that a checker must be able to evaluate terms, and the comparison of an inferred type with an expected one becomes a test of convertibility rather than syntactic equality. MLTT is the most demanding type system targeted by this thesis, and it is the case in which hand-written checkers are hardest to write and to trust.
+
+\begin{figure}[ht]
+\centering
+\[
+\frac{\Gamma \vdash A\ \mathsf{type} \quad \Gamma, x{:}A \vdash B\ \mathsf{type}}{\Gamma \vdash \Pi x{:}A.\, B\ \mathsf{type}}
+\qquad
+\frac{\Gamma, x{:}A \vdash t : B}{\Gamma \vdash \lambda x{:}A.\, t : \Pi x{:}A.\, B}
+\]
+\[
+\frac{\Gamma \vdash f : \Pi x{:}A.\, B \quad \Gamma \vdash a : A}{\Gamma \vdash f\, a : B[a/x]}
+\qquad
+\frac{\Gamma \vdash t : A \quad A \equiv B \quad \Gamma \vdash B\ \mathsf{type}}{\Gamma \vdash t : B}
+\]
+\caption{Typing rules for dependent functions in Martin-L\"of type theory}
+\label{fig:lr-mltt}
+\end{figure}
+
+\section{Bidirectional Typing}
+\label{sec:lr-bidir}
+
+Bidirectional typing refines the declarative judgment $\Gamma \vdash e : \tau$ into two directional judgments: checking, written $\Gamma \vdash e \Leftarrow \tau$, where the type is an input, and synthesis (or inference), written $\Gamma \vdash e \Rightarrow \tau$, where the type is an output computed from the term. Making explicit where type information flows both guides the implementation of a checker and localises errors, since a failure can be attributed to a single rule application rather than to a distant constraint. The survey of Dunfield and Krishnaswami~\cite{dunfield2021bidirectional} is the main reference for the discipline and the basis for the rules used in this thesis.
+
+The survey evaluates a bidirectional system by four criteria: mode-correctness, meaning that every input is known before it is needed and no guessing is required; completeness, meaning that valid programs are not rejected beyond the annotations the system asks for; size, since fewer rules are better; and the character of the annotations, which should be lightweight, predictable, and stable. It also describes a number of variations, including local type inference for polymorphism, mixed-direction types, and backwards bidirectional typing. This thesis uses the basic discipline and the standard rules; the variations are relevant only as a reminder that bidirectional typing is a family of techniques whose details depend on the target language.
+
+Despite its conceptual simplicity, implementing a bidirectional system involves practical nuances. Checking rules often extend the context, for example when typing a $\lambda$-abstraction, and synthesised information must be threaded back up without violating scope or shadowing. A designer must also decide, for each syntactic form, whether it checks or synthesises, and these choices determine where annotations are required and how errors are reported. From the standpoint of this thesis, the most important lesson is methodological: a bidirectional checker separates the language-specific behaviour of individual constructs from the common process of checking and inference. The rules for a construct determine which subterms are checked and which are inferred, while the surrounding machinery manages the context and the information produced during traversal. A reusable interface can exploit this separation while also making the result of typing available as a complete typed syntax tree.
+
+\section{Type Elaboration and Typed Syntax}
+\label{sec:lr-elaboration}
+
+Type checking is often described in terms of a judgment that relates a term to its type. In an implementation, however, returning the type of the root expression is not always sufficient. Later compiler and language-processing stages may need access to the typing information established for subexpressions as well. A type checker can therefore produce an annotated representation of the program in addition to deciding whether the program is well typed.
+
+In this thesis, \emph{type elaboration} refers to producing a complete typed abstract syntax tree. The result retains the structure of the program while recording the typing information associated with its syntax nodes. This is distinct from an interface that returns only the type inferred for the current node: the annotations are attached throughout the resulting tree, so that subsequent stages can inspect the typing information of subexpressions without repeating the type-checking process.
+
+This distinction is important for the design of a generic engine. Checking and inference remain the two modes through which the typing rules are expressed, but the information computed by those rules contributes to a structured output. The interface must consequently account not only for the propagation of expected and inferred types, but also for the construction of the typed syntax returned by the checker. The present work investigates this as part of a practical, reusable type-elaboration interface.
+
+\section{Abstract Syntax Representations}
+\label{sec:lr-syntax}
+
+Abstract syntax is the backbone of language processing systems. It combines a signature, which specifies the shape of syntax nodes, with a recursive structure that composes these nodes into trees. Swierstra's data types \`a la carte~\cite{swierstra2008datatypes} use free monads to define syntax modularly, so that language features can be composed incrementally. Second-order abstract syntax (SOAS) extends this setting by incorporating binders directly into the signature, and Kudasov~\cite{kudasov2024freemonads} shows how an intrinsically scoped syntax can be generated from a second-order signature using free monads, with the set of variables in scope tracked in the type of the term. This thesis does not use data types \`a la carte directly. In the same way as Free Foil, it aims to support that style, so that language extensions can be written as separate signature fragments and combined without rewriting existing code.
+
+Handling binders correctly is one of the most error-prone aspects of language implementation. Capture-avoiding substitution prohibits the naive replacement of a variable by an expression, and the Free Foil paper~\cite{kudasov2024freefoil} illustrates this with an example in the untyped $\lambda$-calculus, where substituting $y$ for $x$ under a binder would mix a bound variable $y$ with a free variable $y$. The same paper states that capture-avoiding substitution is not trivial to implement and that even experts make mistakes when using a naive representation.
+
+Efficient representations are not immune. The rapier technique used by the Glasgow Haskell Compiler~\cite{peytonjones2002secrets} gives fast, stateless capture-avoiding substitution, but it relies on invariants that nothing checks. The developers of the Dex compiler report that they repeatedly broke these invariants, and that this became one of the biggest barriers to implementing new language ideas and to onboarding new people~\cite{maclaurin2023foil}. They also point out that the harder part is not substitution itself but compiler passes such as type inference, which contain logic similar to substitution and require constant bookkeeping of scopes and renaming, and that this is where mistakes are made. Anecdotally, after they adopted the scope-safe foil, the formerly pervasive name-handling bugs disappeared from the compiler~\cite{maclaurin2023foil}.
+
+A second response is to use the host language's type system to make illegal states unrepresentable. Allais, Atkey, Chapman, McBride and McKinna~\cite{allais2021universe} observe that programmers must otherwise remain constantly vigilant against accidentally constructing ill-scoped terms, because the implicit context is prone to being forgotten or muddled. They also observe that, even when scope safety is expressed in types, the programmer still rewrites the same boilerplate for each new scope-safe operation, such as renaming, substitution, desugaring, or printing, and then again for the correctness proofs. Their remedy is a universe of syntaxes with binding in which scope-safe traversals are written once and for all by generic programming; their examples include a generic scope checker, a bidirectional type checker, and an elaborator into a typed core language. This is the same motivation as the present thesis, applied there to traversals and proofs and here to type checking. The cost of repeated work on the type-checking side is also acknowledged by Felicissimo, who notes that a generic implementation lets one prototype a new type theory without writing a new bidirectional algorithm from scratch, which is valuable given the large number of new theories proposed every year~\cite{felicissimo2023generic}.
+
+From the standpoint of this thesis, binder-aware representations are necessary for a pragmatic reason: typing rules must be implemented over real syntax trees, and they interact non-trivially with binding, for example when a \texttt{let} introduces a variable whose type is known only after its bound expression has been inferred. A representation that makes scope explicit and machine-checkable reduces the risk of capture and shadowing bugs and enables the generic traversal architecture used later.
+
+\section{Free Foil}
+\label{sec:lr-freefoil}
+
+Free Foil~\cite{kudasov2024freefoil,freefoil} builds on the theoretical foundation of SOAS to provide a practical implementation of scope-safe abstract syntax in Haskell. Syntax is defined by a signature with two type parameters, one for subterms that carry a binder, the scoped subterms, and one for plain subterms. The abstract syntax tree type then combines the signature with a phantom type parameter that statically tracks the scope of each term.
+
+Free Foil builds on the foil of Maclaurin, Radul and Paszke~\cite{maclaurin2023foil}, a scope-safe implementation of the rapier technique that uses rank-2 polymorphism, generalised algebraic data types, and phantom types to enforce the rapier's invariants at compile time. From it Free Foil inherits efficient capture-avoiding substitution and $\alpha$-equivalence, both essential operations for type checkers. It also provides Template Haskell functions that generate the scope-safe representation from a naive one, so that tools such as the BNF Converter can take a language from a grammar to a parser, a pretty-printer, and an efficient scope-safe syntax with little effort. The benchmarks in the paper show that Free Foil outperforms free scoped monads built on nested de Bruijn indices, while the plain foil is faster still, which the authors attribute to the extra level of indirection introduced for each node.
+
+When a type system is implemented on Free Foil, different strategies are available depending on its binding structure. For simple types without type-variable binders, Free Foil can be applied solely to terms. For languages with separate binding structures for terms and types, it can be applied independently to both. For languages with mixed binding, such as System~F or dependent type theories, a unified syntax combining terms and types can be used. The framework also imposes a practical constraint on the language designer: the grammar must expose binding structure, for example by separating plain subterms, scoped subterms, and patterns. Such constraints reduce flexibility in grammar design, but they are what makes generic traversal possible.
+
+\section{Pfenning Recipe}
+\label{sec:lr-recipe}
+
+The Pfenning recipe~\cite{dunfield2021bidirectional} is a systematic procedure that transforms a declarative type system into a bidirectional one. Its steps are as follows:
 \begin{enumerate}
-    \item Watermark must contain all necessary information, but still, be placeable and recognizable even on smaller images. The produced watermark must be compact but have the possibility to store enough information. 
-    \item To prevent easy tampering, the watermark must be invisible to the naked eye (and, preferably, to basic image parsing tools). If malefactor does not know about the existence of watermark, they might not even try to remove it and disable it. 
+    \item \textbf{Identify the principal judgment}, that is, the connective introduced or eliminated by the rule.
+    \item \textbf{Assign modes to the principal judgment.} For an introduction rule, the principal judgment is checked; for an elimination rule, it is synthesised. Variables synthesise.
+    \item \textbf{Determine the modes of the remaining judgments}, based on the mode of the principal judgment, so that every input is known when it is needed.
 \end{enumerate}
+Two additional rules mediate between the modes: an annotation rule switches from synthesis in the conclusion to checking in the premise, and a subsumption (switch) rule switches from checking in the conclusion to synthesis in the premise, followed by an equality or subtyping test. Annotations are needed exactly where an introduction form meets an elimination form.
+
+Consider function application in the simply typed $\lambda$-calculus. It eliminates a function type, so its conclusion is synthesised; the function premise must therefore synthesise a function type, and the argument is checked against the known input type. Abstraction is an introduction form and is checked. Figure~\ref{fig:lr-bidir-rules} shows the resulting rules, together with the switch rule.
+
+\begin{figure}[ht]
+\centering
+\[
+\frac{\Gamma, x : A \vdash e \Leftarrow B}{\Gamma \vdash \lambda x.\, e \Leftarrow A \to B}
+\quad
+\frac{\Gamma \vdash f \Rightarrow A \to B \quad \Gamma \vdash a \Leftarrow A}{\Gamma \vdash f\, a \Rightarrow B}
+\quad
+\frac{\Gamma \vdash e \Rightarrow A' \quad A' = A}{\Gamma \vdash e \Leftarrow A}
+\]
+\caption{Bidirectional rules for abstraction, application, and the switch from synthesis to checking}
+\label{fig:lr-bidir-rules}
+\end{figure}
+
+For a generic checker, the recipe matters because it makes the choice of mode mechanical. In this thesis, however, the recipe serves as a design guide rather than as an algorithm to be automated: the full recipe has more cases than the ones shown here, and automating it is beyond the scope of this work. The check and infer rules of each language are therefore written by hand, as the language-specific part of the engine, while the machinery around them is shared.
+
+\section{Other Generic Approaches}
+\label{sec:lr-other}
+
+Genericity in type checkers has been pursued in several complementary ways. The most relevant is the work of Felicissimo~\cite{felicissimo2023generic}, who presents a framework for generic bidirectional typing for dependent type theories. The paper observes that the formal development of bidirectional typing had until then stayed confined to specific theories, with general guidelines remaining informal. It also points out that usable presentations of type theories omit most type annotations, which makes it unclear how to type terms algorithmically; bidirectional typing is the proposed answer.
+
+In Felicissimo's framework a theory is given as data: sorts, constructors, destructors with a distinguished principal argument, and rewrite rules describing how destructors compute on constructors. The Pfenning recipe is then applied uniformly: constructors are checked, destructors are inferred from their principal argument, and a switch rule compares types up to conversion. The key technical device is matching modulo rewriting, in which an expected or inferred type is reduced until its head is a constructor and the pieces can be read off. The paper proves that the bidirectional system is sound with respect to the declarative one and complete in the sense of annotability, following Dunfield and Krishnaswami, and that typing is decidable for normalizing theories. The framework is implemented in the theory-independent type checker BiTTs~\cite{bitts}, which has been used with several theories, among them variants of Martin-L\"of type theory.
+
+The two works have different goals. Felicissimo's is a formal development: it comes with proofs of soundness, annotability, and decidability, and treats entire type theories as first-class objects from which the checker is derived. The present thesis does not compete with that development and provides no comparable metatheory. It has a practical, engineering-oriented aim: an engine embedded in a host language, where the language designer writes typing rules per syntax node against a generic scope-aware traversal over first-order signatures extended with binders. Both aim to reduce the implementation burden on language designers, and BiTTs serves as a reference point for the MLTT case study.
+
+\section{Predecessor Work}
+\label{sec:lr-predecessors}
+
+The starting point of this thesis is a line of bachelor's theses supervised by Nikolai Kudasov at Innopolis University, and a related workshop paper by Smirnova, Tomilovskaia and Deryabkin~\cite{smirnova2025wits}. Table~\ref{table:lr_predecessors} summarises them.
+
+\begin{longtable}{p{3.4cm}|p{5.4cm}|p{5.0cm}}
+\caption[Predecessor theses on generic type checking]{Predecessor theses on generic type checking over Free Foil} \label{table:lr_predecessors} \\
+\hline
+\textbf{Work} & \textbf{Contribution} & \textbf{Open point}\\
+\hline
+\endfirsthead
+\hline
+\textbf{Work} & \textbf{Contribution} & \textbf{Open point}\\
+\hline
+\endhead
+Tomilovskaia~\cite{tomilovskaia2025bidir} & Generic bidirectional engine; System~F case study & Rules written by hand; single-variable binders; minimal error localisation\\
+\hline
+Smirnova~\cite{smirnova2025thesis} & Generic Algorithm~W for Hindley--Milner inference & Error localisation; no benchmarks against other checkers\\
+\hline
+Deryabkin~\cite{deryabkin2025hmlevels} & Hindley--Milner inference with level-based generalisation and separated constraint generation and solving & Hand-written unification; no benchmarks; generic interface only proposed\\
+\hline
+Meslmani~\cite{meslmani2026thesis} & Generic engine extended to modal typing (IS4 and IK) through an abstract context interface & Non-dependent type language; error-message usability not assessed\\
+\hline
+\end{longtable}
+
+Tomilovskaia~\cite{tomilovskaia2025bidir} is the immediate technical predecessor and the starting point for the present thesis. It develops a generic bidirectional engine in Haskell on top of Free Foil. Its central device is a record wrapping each syntax node that exposes both a check function and an infer function, together with a scoped variant that takes an optional type for the binder, so that constructs such as \texttt{let}, where the bound variable's type is known only after inferring the bound expression, can be handled uniformly. Language designers implement a typeclass with one checking case and one inference case per construct, and the framework handles traversal and scope. The thesis reports a case study of System~F in which the generic implementation needs 128 lines of type-checking logic against 199 for a direct Free Foil implementation, a reduction of about 35\%, and contributes several utilities to Free Foil, notably an operation for coercing a syntax tree to a smaller scope when it does not use the extra names.
+
+The present thesis is a continuation of this design rather than an independent reimplementation of the same contribution. It takes the generic, scope-aware separation of traversal from language-specific rules as its foundation, and investigates how the interface can be developed into a more general and useful type-elaboration interface. In particular, the result of typing is treated as a complete typed abstract syntax tree, not merely as the type inferred for the root term. The interface and its presentation are also developed with compositional use and practical language examples in mind. This changes the emphasis of the work: the question is not simply how to factor bidirectional checking out of a language implementation, but how to provide a reusable interface through which language-specific typing rules can produce typed syntax.
+
+Tomilovskaia's thesis also records limitations that provide context for further development: rules are written by hand rather than automatically derived from the Pfenning recipe, binders are limited to a single variable, and error localisation is minimal. These are useful points of comparison, but they should not be read as a claim that the present thesis necessarily resolves every limitation. The focus here is the type-elaboration interface and the production of typed syntax.
+
+Smirnova~\cite{smirnova2025thesis} follows the same idea for type inference. The thesis presents a language-agnostic implementation of Algorithm~W over second-order abstract syntax, decoupling the description of the target language from the logic of the algorithm, and verifies it on a lambda calculus with let-expressions and for-expressions. It tests generality by adding pairs to the language, which required only a new grammar rule and new instructions in the user interface and no change to the algorithm. In a comparison of the code a user writes, the instructions for addition and \texttt{let} take 10 lines through the generic interface against 16 without it. The thesis names better error localisation, documentation, and benchmarking against other checkers as next steps.
+
+Deryabkin~\cite{deryabkin2025hmlevels} studies Hindley--Milner-style inference with level-based generalisation, a variant that avoids traversing the whole type environment at \texttt{let}-generalisation, with constraint generation separated from solving, again over Free Foil syntax. The thesis reports that scope safety and generality removed an entire class of bugs and that the type checker is parameterised over the syntax signature, so that new terms do not require changes to the inference core, while noting that the main drawback of Free Foil is its learning curve. Its limitations are a hand-written unification algorithm and the absence of benchmarks, and it proposes a type class, \texttt{HMTypingSig}, as a way towards a generic library. Both inference theses are accompanied by the repository~\cite{freefoiltypecheck}.
+
+Meslmani~\cite{meslmani2026thesis} extends the bidirectional engine to a modal setting. The thesis adds Fitch-style box modalities (IS4 and IK) by isolating modal behaviour in an abstract, lock-aware context interface, so that the generic engine commits to no particular modal logic. Its instantiated language agrees with a hand-written baseline checker on all of the baseline's 211 example programs. Its stated limitations are relevant here: the type language is non-dependent, the evidence is example-based rather than metatheoretic, and error-message usability is not assessed.
+
+Taken together, this line of work establishes that a generic, scope-safe bidirectional engine is feasible end to end, from grammar to checker, and that it reduces implementation effort. It also shows the recurring pattern the present thesis builds on: traversal and scope management are factored out, while language-specific rules stay local.
+
+\section{Related Languages}
+\label{sec:lr-languages}
+
+Two further works serve as comparisons or potential consumers of the engine. Stella~\cite{abounegm2024stella} is a statically typed language designed for teaching the implementation of type systems. It has a minimalistic core and a set of small, explicitly declared extensions, covering algebraic data types, references, exceptions, exhaustive pattern matching, subtyping, recursive types, universal polymorphism, and type reconstruction, and it relies on the BNF Converter so that templates can be provided in several implementation languages. A language that is organised as a core plus extensions is a natural test of the extensibility that this thesis aims for.
+
+Rzk~\cite{kudasov2026rzk} is a proof assistant for synthetic $\infty$-categories implementing a variant of Riehl and Shulman's simplicial type theory. It is implemented in Haskell, generates its parser and pretty-printer with the BNF Converter, and represents terms as a free scoped monad, the second-order abstract syntax construction on which Free Foil is based. Its type checker is bidirectional, in the style of Coquand and of Dunfield and Krishnaswami, and extends the standard picture so that every judgement carries an additional tope context. Type checking runs over an annotated copy of the syntax in which every node carries its checked type together with cached normal forms. This illustrates the usefulness of retaining typing information throughout a syntax tree, rather than exposing only the type of the root term. It is therefore a relevant point of comparison for the typed output considered in this thesis. Because the checker is specific to the theory it implements, Rzk is also a realistic example of the kind of dependent type checker that a generic engine could serve.
+
+\section{Conclusion}
+
+This chapter has reviewed the foundations and prior work relevant to a reusable type-elaboration interface. It introduced the type systems considered in this thesis, from the simply typed $\lambda$-calculus and System~F to dependent type theories, and discussed bidirectional typing as a practical discipline for implementing their typing rules. It then examined scope-safe representations of abstract syntax, with particular attention to Free Foil, and considered the Pfenning recipe and other approaches to generic type checking.
+
+The predecessor work establishes that generic, scope-safe type checking is a practical approach: common machinery can be separated from language-specific typing rules, and the resulting framework can be applied to more than one language. Tomilovskaia's engine is the immediate foundation of this thesis. The present work builds on that foundation but shifts the emphasis towards the interface for type elaboration and the form of its output. In particular, elaboration means returning a complete typed abstract syntax tree, with typing information associated with the syntax nodes, rather than returning only the type of the current or root expression.
+
+The contribution of this thesis is to develop a reusable interface for defining language-specific checking and inference rules and producing typed syntax, together with further examples that demonstrate its use. The intended separation is that the language author supplies the grammar and the rules for the language's syntax constructs, while the framework provides the shared machinery needed to apply those rules over scope-safe syntax and construct the elaborated result. The approach is evaluated through concrete language implementations, including System~F and Martin-L\"of type theory. These examples provide a basis for assessing the practicality of the interface, the reuse of its common machinery, and its ability to produce complete typed syntax.
+
+A direct extension of Tomilovskaia's work is a legitimate research contribution. The distinction lies in the question being addressed: rather than focusing only on how to implement generic bidirectional type checking, this thesis investigates how to provide a reusable and practical interface for type elaboration over scope-safe syntax.

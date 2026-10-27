@@ -1,0 +1,90 @@
+# =========================
+# LaTeX / VimTeX
+# =========================
+
+# Auxiliary files
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.lot
+*.out
+*.toc
+*.run.xml
+*.synctex.gz
+*.synctex(busy)
+*.xdv
+*.thm
+*.nav
+*.snm
+*.vrb
+*.acn
+*.acr
+*.alg
+*.glg
+*.glo
+*.gls
+*.ist
+*.lol
+*.nlo
+*.nls
+*.ilg
+*.ind
+*.idx
+*.xdy
+*.4ct
+*.4tc
+*.idv
+*.lg
+*.tmp
+*.xref
+*.dvi
+*.ps
+
+# Build directories
+_build/
+build/
+out/
+
+# LaTeX compilation logs
+*.log
+
+# PDF output (uncomment if you don't want to commit compiled PDFs)
+# *.pdf
+
+# =========================
+# Vim / Neovim
+# =========================
+
+# Swap files
+*.swp
+*.swo
+*.swn
+*.sw?
+
+# Backup files
+*~
+*.bak
+*.orig
+
+# Persistent undo files
+*.un~
+
+# =========================
+# Editor / IDE
+# =========================
+
+.idea/
+.vscode/
+*.code-workspace
+
+# =========================
+# Miscellaneous
+# =========================
+
+*.temp
+*.cache
+*.local
