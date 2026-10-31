@@ -1,112 +1,46 @@
 \chapter{Introduction}
 \label{chap:intro}
-\chaptermark{Optional running chapter heading}
-\section{Spacing \& Type}
-\label{sec:section}
+\chaptermark{Introduction}
 
-This is a section. This is a citation without brackets. and this is one with brackets \cite{A}. Multiple \cite{A,B,C} Here's a reference to a subsection: \ref{sec:subsection}. Citation of an online article \cite{D}. Citation of an online proceeding \cite{F}. The body of the text and abstract must be double-spaced except for footnotes or long quotations. Fonts such as Times Roman, Bookman, New Century Schoolbook, Garamond, Palatine, and Courier are acceptable and commonly found on most computers. The same type must be used throughout the body of the text. The font size must be 10 point or larger and footnotes\footnote{This is a footnote.} must be two sizes smaller than the text\footnote{This is another footnote.} but no smaller than eight points. Chapter, section, or other headings should be of a consistent font and size throughout the ETD, as should labels for illustrations, charts, and figures.
+\section{Motivation}
+\label{sec:intro-motivation}
 
-\subsection{Creating a Subsection}
-\label{sec:subsection}
+Type systems classify programs before execution and rule out whole classes of errors at compile time, and they are a central object of study and implementation in programming language research and teaching. New type systems, language extensions, and experimental languages are regularly proposed, and each is usually accompanied by an implementation used to test and demonstrate it~\cite{felicissimo2023generic,abounegm2024stella}. Getting such a checker working quickly is valuable, because it allows the designer to try new rules and examples early. Bidirectional typing~\cite{dunfield2021bidirectional} is a well-studied basis for such checkers. It splits the typing judgment into two modes, checking a term against a known type and inferring a type from a term, which keeps the number of required type annotations small, supports features for which full inference is impossible, and makes it clear which rule is responsible for a failure.
 
-\subsubsection{Creating a Subsubsection}
-\subsubsection{Creating a Subsubsection}
-\subsubsection{Creating a Subsubsection}
+Implementing a checker correctly is nevertheless difficult, for two reasons. The first is that languages have binders, and binders make scope bugs easy to introduce. A checker must track variables and their types, avoid variable capture during substitution, and manage the context when going under a binder. The developers of the Dex compiler report that they repeatedly broke the invariants of the name-handling discipline they used, that this became one of the biggest barriers to implementing new language ideas and onboarding new people, and that compiler passes such as type inference are where such mistakes are most likely~\cite{maclaurin2023foil}. The second reason is repetition. Even when scope safety is expressed in the types of the host language, the same code must be written again for every new scope-safe operation~\cite{allais2021universe}, and the same traversal, context handling, and dispatch code is rewritten for every new type checker. Generic implementations are valuable precisely because they allow a new language or type theory to be prototyped without writing a new bidirectional algorithm from scratch~\cite{felicissimo2023generic}.
 
-\paragraph{This is a heading level below subsubsection}
+Free Foil~\cite{kudasov2024freefoil,freefoil} addresses the first problem. It generates an efficient, intrinsically scoped abstract syntax with capture-avoiding substitution and $\alpha$-equivalence from a second-order signature or from a grammar, so that a scoping mistake becomes a compile-time error in Haskell. A line of predecessor theses has built generic type-checking infrastructure on top of it. In particular, Tomilovskaia~\cite{tomilovskaia2025bidir} separates the traversal of the syntax tree and the management of scope from the typing rules of a particular language, so that a language designer supplies one checking and one inference case per syntax construct.
 
-And this is a quote:
-%
-\begin{quote}
-\blindtext
-\end{quote}
+The result of such an engine is, however, limited. Each syntax node is wrapped by operations that either verify a term against a type or return the type of that term. The typing information that was established for the subexpressions along the way is discarded, so later stages of language processing cannot use it without repeating the work. A type checker for a realistic language, such as the proof assistant Rzk~\cite{kudasov2026rzk}, instead retains typing information throughout the tree. This thesis studies how a generic bidirectional engine over scope-safe syntax can expose its result in this form, that is, how it can perform type elaboration: producing a complete typed abstract syntax tree rather than only the type of the root expression.
 
-\begin{figure}[hbt]
-\centering
-\includegraphics[]{figs/images.png}
-\caption{One kernel at $x_s$ (\emph{dotted kernel}) or two kernels at
-$x_i$ and $x_j$ (\textit{left and right}) lead to the same summed estimate
-at $x_s$. This shows a figure consisting of different types of
-lines. Elements of the figure described in the caption should be set in
-italics, in parentheses, as shown in this sample caption.}
-\label{fig:example}
-\end{figure}
+\section{Existing Solutions}
+\label{sec:intro-existing}
 
-This is a table:
-% currsize is not set in the long table environment, so we need to set it before we set it up.
-\makeatletter
-\let\@currsize\normalsize
-\makeatother
+Someone who wants a working type checker for a new language or type system has several options, each with its own limitations.
 
-% tabular environments are set to be single-spaced in the  thesis class,  but long tables do not use tabular
-% to get around this, set the spacing to single spacing at the start of the long table environment, and set it back to double-spacing at the end of it
+\paragraph{Writing the checker by hand.} The most direct approach is a checker written for one language, either with a naive representation of syntax or with a scope-safe one. This is flexible, but it repeats the traversal, scope, and context code for every language and every extension, and with a naive representation it exposes the implementer to the scoping bugs described above.
 
-\begin{longtable}{c|c|c}
-\caption[This is the title I want to appear in the List of Tables]{This Is a Table Example} \label{tab:pfams} \\
-\hline
-A & B & C \\
-\hline
-\endfirsthead
-\multicolumn{3}{@{}l}{} \\
-\hline
-A & B & C\\
-\hline
-\endhead
-a1 & b1 & c1 \\
-a2 & b2 & c2\\
-a3 & b3 & c3\\
-a4 & b4 & c4\\
-\hline
-\end{longtable}
+\paragraph{Scope-safe syntax libraries.} Free Foil and the techniques it builds on~\cite{kudasov2024freemonads,maclaurin2023foil} remove the scoping problem but leave the type checker itself to be written. Generic programming over syntaxes with binding~\cite{allais2021universe} goes further and provides generic scope checkers and type checkers in a dependently typed setting, but in a different language and ecosystem.
 
-The package ``upgreek'' allows us to use non-italicized lower-case greek letters. See for yourself: $\upbeta$, $\bm\upbeta$, $\beta$, $\bm\beta$. Next is a numbered equation:
-\begin{align}
-\label{eq:name}
-\|\bm{X}\|_{2,1}={\underbrace{\sum_{j=1}^nf_j(\bm{X})}_{\text{convex}}}=\sum_{j=1}^n\|\bm{X}_{.,j}\|_2
-\end{align}
-The reference to equation (\ref{eq:name}) is clickable.
-\section[Theorems, Corollaries, Lemmas, Proofs, Remarks, Definitions and Examples]{Theorems, Corollaries, Lemmas, Proofs, Remarks, Definitions,and Examples}
+\paragraph{Generic engines on Free Foil.} The predecessor theses are closest to this work. Tomilovskaia~\cite{tomilovskaia2025bidir} builds a generic bidirectional engine and reports that, for a System F checker, it reduces the type-checking logic from 199 to 128 lines compared to a direct Free Foil implementation. Smirnova~\cite{smirnova2025thesis} and Deryabkin~\cite{deryabkin2025hmlevels} do the same for Hindley--Milner inference, and Meslmani~\cite{meslmani2026thesis} extends the bidirectional engine to modal type theories through an abstract context interface. A summary of this line of work is given in Chapter~\ref{chap:lr}.
 
-\begin{theorem}
-\label{thm:onlytheorem}
-\blindtext
-\end{theorem}
+These engines establish that separating traversal and scope handling from language-specific rules is practical. What none of them provides is an interface whose output is the elaborated, typed syntax of the program. This is the gap addressed by the present thesis.
 
-\begin{proof}
-I'm a (very short) proof.
-\end{proof}
+\section{Objectives and Contribution}
+\label{sec:intro-objectives}
 
-\begin{lemma}
-I'm a lemma.
-\end{lemma}
+The goal of this thesis is to design and implement an extensible approach to generic bidirectional type checking and elaboration over second-order abstract syntax, in which common type-checking machinery is reused across languages and language-specific typing rules stay separate from the generic implementation. The aim is that a working type checker for a new language or type system can be obtained quickly, by writing only the language-specific rules. It continues the design of Tomilovskaia's engine and develops it into a reusable type-elaboration interface. Specifically, this thesis pursues the following objectives:
+\begin{enumerate}
+    \item Generalise the existing bidirectional engine into a reusable one with an interface through which a language author defines the checking and inference rules for each syntax construct.
+    \item Elaborate programs into a complete typed abstract syntax tree, so that a successful check returns the input program together with the typing information established for its subexpressions.
+    \item Provide a way for a language to introduce mechanisms that cannot be expressed with the basic checking and inference rules alone.
+    \item Evaluate the approach on type checkers for several type systems, namely System F and Hindley--Milner inference, built on a single core.
+\end{enumerate}
 
-\begin{corollary}
-I include a reference to Thm. \ref{thm:onlytheorem}.
-\end{corollary}
+The evaluation is organised around four criteria: reuse of the generic infrastructure across the checkers, production of type-annotated syntax, and the ability to implement language-specific extensions.
 
-\begin{proposition}
-I'm a proposition.
-\end{proposition}
+\section{Scope of the Thesis}
+\label{sec:intro-scope}
 
-\begin{remark}
-I'm a remark.
-\end{remark}
-
-\begin{definition}
-I'm a definition. I'm a definition. I'm a definition. I'm a definition. I'm a definition. I'm a definition. I'm a definition. I'm a definition. I'm a definition. I'm a definition. I'm a definition.
-\end{definition}
-
-\begin{example}
-I'm an example.
-\end{example}
-
-
-\section[Optional table of contents heading]{Section with\\ linebreaks in\\the
-name}
-
-
-\Blindtext[2]
-
-
-
+Some limits of the work are deliberate. The check and infer rules of each language are written by hand, deriving them automatically from declarative rules using the Pfenning recipe is not attempted. The thesis does not provide metatheoretical proofs of soundness or completeness for the generic engine, in contrast to the theory-level work discussed above, and its evidence for correctness comes from concrete language implementations and test suites. The focus is the type-elaboration interface and the production of typed syntax. Error reporting, including precise source locations in error messages, is outside the scope of this thesis and is left for future work.
 
