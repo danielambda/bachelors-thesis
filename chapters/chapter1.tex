@@ -29,7 +29,7 @@ These engines establish that separating traversal and scope handling from langua
 \section{Objectives and Contribution}
 \label{sec:intro-objectives}
 
-The goal of this thesis is to design and implement an extensible approach to generic bidirectional type checking and elaboration over second-order abstract syntax, in which common type-checking machinery is reused across languages and language-specific typing rules stay separate from the generic implementation. The aim is that a working type checker for a new language or type system can be obtained quickly, by writing only the language-specific rules. It continues the design of Tomilovskaia's engine and develops it into a reusable type-elaboration interface. Specifically, this thesis pursues the following objectives:
+The goal of this thesis is to design and implement a generic bidirectional type elaboration via Free Foil, in which common type-checking machinery is reused across languages and language-specific typing rules stay separate from the generic implementation. The aim is that a working type checker for a new language or type system can be obtained quickly, by writing only the language-specific rules. It continues the design of Tomilovskaia's engine and develops it into a reusable type-elaboration interface. Specifically, this thesis pursues the following objectives:
 \begin{enumerate}
     \item Generalise the existing bidirectional engine into a reusable one with an interface through which a language author defines the checking and inference rules for each syntax construct.
     \item Elaborate programs into a complete typed abstract syntax tree, so that a successful check returns the input program together with the typing information established for its subexpressions.
@@ -37,7 +37,7 @@ The goal of this thesis is to design and implement an extensible approach to gen
     \item Evaluate the approach on type checkers for several type systems, namely System F and Hindley--Milner inference, built on a single core.
 \end{enumerate}
 
-The evaluation is organised around four criteria: reuse of the generic infrastructure across the checkers, production of type-annotated syntax, and the ability to implement language-specific extensions.
+The evaluation is organised around three criteria: reuse of the generic infrastructure across the checkers, production of type-annotated syntax, and the ability to implement language-specific extensions.
 
 \section{Scope of the Thesis}
 \label{sec:intro-scope}
